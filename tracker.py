@@ -48,10 +48,10 @@ class Tracker:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
             bbox = track.to_tlbr()
-
+            class_id = track.get_class()
             id = track.track_id
 
-            tracks.append(Track(id, bbox))
+            tracks.append(Track(id, bbox, class_id))
 
         self.tracks = tracks
 
@@ -59,7 +59,9 @@ class Tracker:
 class Track:
     track_id = None
     bbox = None
+    class_id = None
 
-    def __init__(self, id, bbox):
+    def __init__(self, id, bbox, class_id):
         self.track_id = id
         self.bbox = bbox
+        self.class_id = class_id
