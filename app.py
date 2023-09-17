@@ -1,6 +1,7 @@
 import os
 import gradio as gr
 import cv2
+import pandas as pd
 import random
 from ultralytics import YOLO
 from tracker import Tracker
@@ -27,12 +28,6 @@ def traffic_counting(video):
     cap = cv2.VideoCapture(video)
     ret, frame = cap.read()
 
-    # Define the codec and create a VideoWriter object
-    output_video = "out_video/out.mp4"
-    cap_out = cv2.VideoWriter(output_video, 
-                              cv2.VideoWriter_fourcc(*'MJPG'), 
-                              cap.get(cv2.CAP_PROP_FPS), 
-                              (frame.shape[1], frame.shape[0]))
 
     tracker = Tracker()
 
@@ -70,27 +65,29 @@ def traffic_counting(video):
                             (int(x1) + 5, int(y1) - 5), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA )
     
-        cap_out.write(frame)
+        # Count each type of traffic
+        output_data = {key: len(value) for key, value in OBJECT_IDS.items()}
+        df = pd.DataFrame(list(output_data.items()), columns=['Type', 'Number'])
+
+        yield frame, df
         ret, frame = cap.read()
 
     cap.release()
     cv2.destroyAllWindows()
 
-    return output_video, OBJECT_IDS
 
-
-input_video = gr.Video(type="file")
-output_video = gr.Video(type="file", label="Processed Video")
-
-output_data = gr.Textbox(interactive=False)
+input_video = gr.Video(label="Input Video")
+output_video = gr.Image(type="numpy", label="Processing Video")
+output_data = gr.Dataframe(interactive=False, label="Traffic's Frequency")
 
 demo = gr.Interface(traffic_counting,
                     inputs=input_video,
                     outputs=[output_video, output_data],
-                    examples=[os.path.join('video', x) for x in os.listdir('video')],
-                    cache_axamples=True
+                    examples=[os.path.join('video', x) for x in os.listdir('video') if x != ".gitkeep"],
+                    allow_flagging='never'
                     )
 
 
 if __name__ == "__main__":
+    demo.queue()
     demo.launch(share= False)
