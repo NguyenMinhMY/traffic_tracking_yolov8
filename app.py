@@ -103,8 +103,8 @@ def traffic_counting(video):
 
     cap.release()
     cv2.destroyAllWindows()
-    video_path = video.replace('\','/'')
-    addToDatabase(video.split('/')[-1][:-4], obj_ids)
+    video_path = video.replace("\\", "/")
+    addToDatabase(video.split("/")[-1][:-4], obj_ids)
 
 
 
