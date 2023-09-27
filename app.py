@@ -3,21 +3,53 @@ import gradio as gr
 import cv2
 import pandas as pd
 import random
+from datetime import datetime
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
 from ultralytics import YOLO
 from tracker import Tracker
-from utils import ID2LABEL, compute_color_for_labels
+from utils import ID2LABEL, MODEL_PATH, compute_color_for_labels
 
+
+cred = credentials.Certificate('accountService.json')
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)) 
           for j in range(10)]
 
 detection_threshold = 0.7
-model = YOLO('model_data/yolov8m.pt')
+model = YOLO(MODEL_PATH)
+
+def addToDatabase(ss_id, obj_ids):
+    try:
+        new_doc = db.collection("TrafficData").document()
+        print(new_doc.id)
+        data = {
+            "SS_ID": ss_id,
+            "TF_COUNT_CAR": len(obj_ids['car']),
+            "TF_COUNT_MOTOBIKE": len(obj_ids['bicycle']) + len(obj_ids['motocycle']),
+            "TF_COUNT_OTHERS": len(obj_ids['bus']) + len(obj_ids['truck']) + len(obj_ids['other']),
+            "TF_ID": new_doc.id,
+            "TF_TIME": datetime.now()
+
+        }
+        try:
+            db.collection("TrafficData").document(new_doc.id).set(data)
+            print("Sucessfully saved to database")
+        except:
+            print("Can't upload a new data")
+
+    except:
+        print("Can't create a new data")
 
 
 def traffic_counting(video):
 
-    OBJECT_IDS = {"person": [], 
+    obj_ids = {"person": [], 
                   "bicycle": [], 
                   "car": [], 
                   "motocycle": [], 
@@ -28,9 +60,7 @@ def traffic_counting(video):
     cap = cv2.VideoCapture(video)
     ret, frame = cap.read()
 
-
     tracker = Tracker()
-
     while ret:
         results = model.predict(frame)
 
@@ -56,17 +86,16 @@ def traffic_counting(video):
                 class_id = track.class_id
 
                 cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (compute_color_for_labels(class_id)), 3)
-
                 label_name = ID2LABEL[class_id] if class_id in ID2LABEL.keys() else "other"
-                if track_id not in OBJECT_IDS[label_name]:
-                    OBJECT_IDS[label_name].append(track_id)
+                if track_id not in obj_ids[label_name]:
+                    obj_ids[label_name].append(track_id)
 
                 cv2.putText(frame,f"{label_name}-{track_id}", 
                             (int(x1) + 5, int(y1) - 5), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA )
     
         # Count each type of traffic
-        output_data = {key: len(value) for key, value in OBJECT_IDS.items()}
+        output_data = {key: len(value) for key, value in obj_ids.items()}
         df = pd.DataFrame(list(output_data.items()), columns=['Type', 'Number'])
 
         yield frame, df
@@ -74,6 +103,9 @@ def traffic_counting(video):
 
     cap.release()
     cv2.destroyAllWindows()
+
+    addToDatabase(video.split('/')[-1][:-4], obj_ids)
+
 
 
 input_video = gr.Video(label="Input Video")

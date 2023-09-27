@@ -1,6 +1,8 @@
 ID2LABEL = {0: "person", 1: "bicycle", 2:"car", 3:"motocycle", 5:"bus", 7:"truck"} 
 PALETTE = (2 ** 11 - 1, 2 ** 15 - 1, 2 ** 20 - 1)
 
+MODEL_PATH = "'model_data/yolov8m.pt'"
+
 def compute_color_for_labels(label):
 
     if label == 0: # person
