@@ -11,10 +11,10 @@ from firebase_admin import firestore
 
 from ultralytics import YOLO
 from tracker import Tracker
-from utils import ID2LABEL, MODEL_PATH, compute_color_for_labels
+from utils import ID2LABEL, MODEL_PATH, AUTHEN_ACCOUNT, compute_color_for_labels
 
 
-cred = credentials.Certificate('accountService.json')
+cred = credentials.Certificate(AUTHEN_ACCOUNT)
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
@@ -34,7 +34,7 @@ def addToDatabase(ss_id, obj_ids):
             "TF_COUNT_MOTOBIKE": len(obj_ids['bicycle']) + len(obj_ids['motocycle']),
             "TF_COUNT_OTHERS": len(obj_ids['bus']) + len(obj_ids['truck']) + len(obj_ids['other']),
             "TF_ID": new_doc.id,
-            "TF_TIME": datetime.now()
+            "TF_TIME": datetime.utcnow()
 
         }
         try:
@@ -104,7 +104,7 @@ def traffic_counting(video):
     cap.release()
     cv2.destroyAllWindows()
     video_path = video.replace("\\", "/")
-    addToDatabase(video.split("/")[-1][:-4], obj_ids)
+    addToDatabase(video_path.split("/")[-1][:-4], obj_ids)
 
 
 
