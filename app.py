@@ -2,6 +2,7 @@ import os
 import gradio as gr
 import cv2
 import pandas as pd
+import torch
 import random
 from datetime import datetime
 
@@ -22,7 +23,10 @@ colors = [(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255
           for j in range(10)]
 
 detection_threshold = 0.7
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = YOLO(MODEL_PATH)
+model.to(device=device)
 
 def addToDatabase(ss_id, obj_ids):
     try:
@@ -62,7 +66,7 @@ def traffic_counting(video):
 
     tracker = Tracker()
     while ret:
-        results = model.predict(frame)
+        results = model.predict(frame.to(device))
 
         for result in results:
             detections = []
